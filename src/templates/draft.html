@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Draft - NBA Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>NBA Draft</h2>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Draft Order</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Pick</th>
+                                <th>Team</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pick in draft_order %}
+                            <tr>
+                                <td>{{ pick.pick_number }}</td>
+                                <td>{{ pick.team.city }} {{ pick.team.name }}</td>
+                                <td>{{ pick.status }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {% if current_pick and current_pick.team_id == current_user.team_id %}
+        <div class="card">
+            <div class="card-header">
+                <h4>Your Pick</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for player in available_players %}
+                    <div class="col-md-4 mb-3">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ player.name }}</h5>
+                                <p class="card-text">
+                                    <strong>Position:</strong> {{ player.position }}<br>
+                                    <strong>Overall:</strong> {{ player.overall }}<br>
+                                    <strong>Age:</strong> {{ player.age }}
+                                </p>
+                                <button class="btn btn-primary" onclick="draftPlayer({{ player.id }})">Draft</button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function draftPlayer(playerId) {
+    fetch('/api/draft', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: playerId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+}
+</script>
+{% endblock %} 

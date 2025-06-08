@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+
+{% block title %}My Team - NBA Manager{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>{{ team.city }} {{ team.name }}</h2>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h4>Team Stats</h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <p><strong>Wins:</strong> {{ team.wins }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Losses:</strong> {{ team.losses }}</p>
+                    </div>
+                    <div class="col-md-3">
+                        <p><strong>Win %:</strong> {{ "%.3f"|format(team.wins / (team.wins + team.losses) if team.wins + team.losses > 0 else 0) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h4>Roster</h4>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Position</th>
+                                <th>Overall</th>
+                                <th>Age</th>
+                                <th>Salary</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for player in team.players %}
+                            <tr>
+                                <td>{{ player.name }}</td>
+                                <td>{{ player.position }}</td>
+                                <td>{{ player.overall }}</td>
+                                <td>{{ player.age }}</td>
+                                <td>${{ "{:,.2f}".format(player.salary) }}</td>
+                                <td>
+                                    <button class="btn btn-sm btn-info" onclick="viewPlayerStats({{ player.id }})">Stats</button>
+                                    <button class="btn btn-sm btn-warning" onclick="tradePlayer({{ player.id }})">Trade</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Player Stats Modal -->
+<div class="modal fade" id="playerStatsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Player Stats</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="statsTabs" role="tablist">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="attributes-tab" data-bs-toggle="tab" href="#attributes" role="tab">Attributes</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="season-stats-tab" data-bs-toggle="tab" href="#season-stats" role="tab">Season Stats</a>
+                    </li>
+                </ul>
+                <div class="tab-content mt-3" id="statsTabContent">
+                    <div class="tab-pane fade show active" id="attributes" role="tabpanel">
+                        <div class="row" id="playerAttributes">
+                            <!-- 球员属性将在这里显示 -->
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="season-stats" role="tabpanel">
+                        <div class="row" id="playerSeasonStats">
+                            <!-- 赛季统计将在这里显示 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Trade Modal -->
+<div class="modal fade" id="tradeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Trade Player</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="tradeForm">
+                    <div class="mb-3">
+                        <label for="targetTeam" class="form-label">Select Team</label>
+                        <select class="form-select" id="targetTeam" required>
+                            <option value="">Choose a team...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="targetPlayer" class="form-label">Select Player</label>
+                        <select class="form-select" id="targetPlayer" required>
+                            <option value="">Choose a player...</option>
+                        </select>
+                    </div>
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">Propose Trade</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function viewPlayerStats(playerId) {
+    // 获取球员属性
+    fetch(`/api/player/${playerId}/stats`)
+        .then(response => response.json())
+        .then(data => {
+            const attributesContent = document.getElementById('playerAttributes');
+            attributesContent.innerHTML = `
+                <div class="col-md-6">
+                    <p><strong>Speed:</strong> ${data.stats.speed}</p>
+                    <p><strong>Shooting:</strong> ${data.stats.shooting}</p>
+                    <p><strong>Passing:</strong> ${data.stats.passing}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Defense:</strong> ${data.stats.defense}</p>
+                    <p><strong>Rebounding:</strong> ${data.stats.rebounding}</p>
+                </div>
+            `;
+        });
+
+    // 获取赛季统计
+    fetch(`/api/player/${playerId}/season-stats`)
+        .then(response => response.json())
+        .then(data => {
+            const seasonStatsContent = document.getElementById('playerSeasonStats');
+            if (data.stats) {
+                seasonStatsContent.innerHTML = `
+                    <div class="col-md-6">
+                        <p><strong>Games Played:</strong> ${data.stats.games_played}</p>
+                        <p><strong>Games Started:</strong> ${data.stats.games_started}</p>
+                        <p><strong>Minutes Per Game:</strong> ${data.stats.minutes_per_game}</p>
+                        <p><strong>Points Per Game:</strong> ${data.stats.points_per_game}</p>
+                        <p><strong>Rebounds Per Game:</strong> ${data.stats.rebounds_per_game}</p>
+                        <p><strong>Assists Per Game:</strong> ${data.stats.assists_per_game}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Steals Per Game:</strong> ${data.stats.steals_per_game}</p>
+                        <p><strong>Blocks Per Game:</strong> ${data.stats.blocks_per_game}</p>
+                        <p><strong>Turnovers Per Game:</strong> ${data.stats.turnovers_per_game}</p>
+                        <p><strong>FG%:</strong> ${data.stats.field_goal_percentage}%</p>
+                        <p><strong>3P%:</strong> ${data.stats.three_point_percentage}%</p>
+                        <p><strong>FT%:</strong> ${data.stats.free_throw_percentage}%</p>
+                    </div>
+                `;
+            } else {
+                seasonStatsContent.innerHTML = '<div class="col-12"><p>No stats available for this season</p></div>';
+            }
+        });
+
+    new bootstrap.Modal(document.getElementById('playerStatsModal')).show();
+}
+
+function tradePlayer(playerId) {
+    fetch('/api/teams')
+        .then(response => response.json())
+        .then(data => {
+            const teamSelect = document.getElementById('targetTeam');
+            teamSelect.innerHTML = '<option value="">Choose a team...</option>';
+            data.forEach(team => {
+                if (team.id !== {{ team.id }}) {
+                    teamSelect.innerHTML += `<option value="${team.id}">${team.city} ${team.name}</option>`;
+                }
+            });
+            new bootstrap.Modal(document.getElementById('tradeModal')).show();
+        });
+}
+
+document.getElementById('targetTeam').addEventListener('change', function() {
+    const teamId = this.value;
+    if (teamId) {
+        fetch(`/api/team/${teamId}/players`)
+            .then(response => response.json())
+            .then(data => {
+                const playerSelect = document.getElementById('targetPlayer');
+                playerSelect.innerHTML = '<option value="">Choose a player...</option>';
+                data.forEach(player => {
+                    playerSelect.innerHTML += `<option value="${player.id}">${player.name} (${player.position})</option>`;
+                });
+            });
+    }
+});
+
+document.getElementById('tradeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const playerId = document.querySelector('button[onclick^="tradePlayer"]').getAttribute('onclick').match(/\d+/)[0];
+    const targetTeamId = document.getElementById('targetTeam').value;
+    const targetPlayerId = document.getElementById('targetPlayer').value;
+
+    fetch('/api/trade', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            player_id: playerId,
+            target_team_id: targetTeamId,
+            target_player_id: targetPlayerId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert(data.message);
+        }
+    });
+});
+</script>
+{% endblock %} 
